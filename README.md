@@ -1,4 +1,4 @@
-# $PROJECT_NAME README
+# drift README
 
 Congrats, project leads! You got a new project to grow!
 
