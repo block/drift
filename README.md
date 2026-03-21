@@ -158,20 +158,20 @@ drift works on **macOS**, **Linux**, and **Windows**. Core features (directory/a
 
 ## Agent skill
 
-drift ships a skill file that gives AI coding agents native access to structured file comparison via `drift --json`. The skill is included in every [GitHub release](https://github.com/block/drift/releases).
+drift ships a skill that gives AI coding agents native access to structured file comparison via `drift --json`. The skill is included in every [GitHub release](https://github.com/block/drift/releases).
 
 Install with a single command:
 
 **Claude Code**
 
 ```sh
-gh release download --repo block/drift --pattern 'SKILL.md' --dir ~/.claude/skills/drift
+mkdir -p ~/.claude/skills/drift && gh release download --repo block/drift --pattern 'skill.tar.gz' --output - | tar -xz -C ~/.claude/skills/drift
 ```
 
 **Codex / Amp**
 
 ```sh
-gh release download --repo block/drift --pattern 'SKILL.md' --dir ~/.agents/skills/drift
+mkdir -p ~/.agents/skills/drift && gh release download --repo block/drift --pattern 'skill.tar.gz' --output - | tar -xz -C ~/.agents/skills/drift
 ```
 
 ## License

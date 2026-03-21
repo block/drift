@@ -22,9 +22,13 @@ archives:
 checksum:
   name_template: "checksums.txt"
 
+before:
+  hooks:
+    - tar -czf skill.tar.gz -C .claude/skills/drift .
+
 release:
   extra_files:
-    - glob: .claude/skills/drift/SKILL.md
+    - glob: skill.tar.gz
 
 changelog:
   sort: asc
