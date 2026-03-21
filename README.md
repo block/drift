@@ -45,6 +45,28 @@ drift -m binary MyApp-v1.0/MyApp.app/libcore.dylib MyApp-v2.0/MyApp.app/libcore.
 drift --json MyApp-v1.0 MyApp-v2.0
 ```
 
+## Agent skill
+
+drift ships a skill that gives AI coding agents native access to structured file comparison via `drift --json`. The skill is included in every [GitHub release](https://github.com/block/drift/releases).
+
+Install with a single command:
+
+**Claude Code**
+
+```sh
+mkdir -p ~/.claude/skills/drift && gh release download --repo block/drift --pattern 'skill.tar.gz' --output - | tar -xz -C ~/.claude/skills/drift
+```
+
+**Codex / Amp**
+
+```sh
+mkdir -p ~/.agents/skills/drift && gh release download --repo block/drift --pattern 'skill.tar.gz' --output - | tar -xz -C ~/.agents/skills/drift
+```
+
+**Agent skill demo**
+
+[![asciicast](https://asciinema.org/a/858411.svg)](https://asciinema.org/a/858411)
+
 ### Comparison modes
 
 drift auto-detects the comparison mode based on the inputs:
@@ -155,24 +177,6 @@ drift works on **macOS**, **Linux**, and **Windows**. Core features (directory/a
 | `nm`, `size` | Mach-O binary analysis | macOS (Xcode CLI Tools), Linux (binutils) |
 | `plutil` | Binary plist conversion | macOS only (XML plists work everywhere) |
 | `xclip` or `xsel` | Clipboard | Linux only (macOS and Windows work natively) |
-
-## Agent skill
-
-drift ships a skill that gives AI coding agents native access to structured file comparison via `drift --json`. The skill is included in every [GitHub release](https://github.com/block/drift/releases).
-
-Install with a single command:
-
-**Claude Code**
-
-```sh
-mkdir -p ~/.claude/skills/drift && gh release download --repo block/drift --pattern 'skill.tar.gz' --output - | tar -xz -C ~/.claude/skills/drift
-```
-
-**Codex / Amp**
-
-```sh
-mkdir -p ~/.agents/skills/drift && gh release download --repo block/drift --pattern 'skill.tar.gz' --output - | tar -xz -C ~/.agents/skills/drift
-```
 
 ## License
 
