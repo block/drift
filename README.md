@@ -8,6 +8,8 @@ A **fast**, **interactive** file **comparison tool**.
 
 Compare directories, archives, binaries, plists, and text files with a terminal UI or structured JSON output.
 
+[![asciicast](https://asciinema.org/a/858111.svg)](https://asciinema.org/a/858111)
+
 ## Installation
 
 ```sh
