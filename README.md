@@ -12,11 +12,17 @@ Compare directories, archives, binaries, plists, and text files with a terminal 
 
 ## Installation
 
-```sh
-go install github.com/block/drift/cmd/drift@latest
-```
+[**Download a pre-built binary**](https://github.com/block/drift/releases) for your platform from a release.
 
-Or [download a pre-built binary for your platform from a release](https://github.com/block/drift/releases)
+---
+
+### Alternative install methods
+
+Use `go` to install a version:
+
+```sh
+go install github.com/block/drift/cmd/drift@latest # or @vX.X.X
+```
 
 Or build from source:
 
