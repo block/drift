@@ -1,9 +1,9 @@
 package tui
 
 import (
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 	"github.com/block/drift/compare"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 // detailModel manages the detail pane viewport.
@@ -18,8 +18,7 @@ type detailModel struct {
 }
 
 func newDetailModel(width, height int) detailModel {
-	vp := viewport.New(width, height)
-	vp.MouseWheelEnabled = true
+	vp := viewport.New(viewport.WithWidth(width), viewport.WithHeight(height))
 	return detailModel{viewport: vp}
 }
 
@@ -38,8 +37,8 @@ func (m detailModel) View() string {
 
 // SetSize updates the viewport dimensions.
 func (m *detailModel) SetSize(width, height int) {
-	m.viewport.Width = width
-	m.viewport.Height = height
+	m.viewport.SetWidth(width)
+	m.viewport.SetHeight(height)
 }
 
 // SetContent sets the rendered detail content and scrolls to top.
@@ -48,7 +47,7 @@ func (m *detailModel) SetContent(node *compare.Node, detail *compare.DetailResul
 	m.lastDetail = detail
 	m.lastErr = nil
 	m.ready = true
-	m.renderedContent = renderDetail(node, detail, m.viewport.Width)
+	m.renderedContent = renderDetail(node, detail, m.viewport.Width())
 	m.applySearch()
 	m.viewport.GotoTop()
 }
@@ -59,7 +58,7 @@ func (m *detailModel) SetLoading(node *compare.Node) {
 	m.lastDetail = nil
 	m.lastErr = nil
 	m.ready = true
-	header := NodeHeaderView{Node: node, Width: m.viewport.Width}.Render()
+	header := NodeHeaderView{Node: node, Width: m.viewport.Width()}.Render()
 	m.viewport.SetContent(header + "\n\n" + styleDim.Render("  Loading..."))
 	m.viewport.GotoTop()
 }
@@ -70,7 +69,7 @@ func (m *detailModel) SetError(node *compare.Node, err error) {
 	m.lastDetail = nil
 	m.lastErr = err
 	m.ready = true
-	m.viewport.SetContent(ErrorView{Node: node, Err: err, Width: m.viewport.Width}.Render())
+	m.viewport.SetContent(ErrorView{Node: node, Err: err, Width: m.viewport.Width()}.Render())
 	m.viewport.GotoTop()
 }
 
@@ -130,10 +129,10 @@ func (m detailModel) CopyableText() string {
 		return ""
 	}
 	if m.lastErr != nil {
-		return ErrorView{Node: m.node, Err: m.lastErr, Width: m.viewport.Width}.CopyableText()
+		return ErrorView{Node: m.node, Err: m.lastErr, Width: m.viewport.Width()}.CopyableText()
 	}
 	if m.lastDetail != nil {
-		return copyableDetail(m.node, m.lastDetail, m.viewport.Width)
+		return copyableDetail(m.node, m.lastDetail, m.viewport.Width())
 	}
-	return NodeHeaderView{Node: m.node, Width: m.viewport.Width}.CopyableText()
+	return NodeHeaderView{Node: m.node, Width: m.viewport.Width()}.CopyableText()
 }

@@ -5,10 +5,11 @@ import (
 	"io"
 	"strings"
 
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
 	"github.com/block/drift/compare"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/sahilm/fuzzy"
 )
 
@@ -50,6 +51,9 @@ func (d treeDelegate) Render(w io.Writer, m list.Model, index int, item list.Ite
 		}
 	}
 
+	// maxW is the visual width available for the item (1 char reserved for the leading accent/space).
+	maxW := width - 1
+
 	if isSelected {
 		// Plain-text prefix + content for full-width highlight.
 		prefix := buildPrefix(ti, identity)
@@ -61,8 +65,9 @@ func (d treeDelegate) Render(w io.Writer, m list.Model, index int, item list.Ite
 			content += " " + delta
 		}
 		plain := prefix + content
-		if len(plain) < width-1 {
-			plain += strings.Repeat(" ", width-1-len(plain))
+		plain = ansi.Truncate(plain, maxW, "…")
+		if pw := ansi.StringWidth(plain); pw < maxW {
+			plain += strings.Repeat(" ", maxW-pw)
 		}
 		fmt.Fprint(w, styleSelectedAccent.Render("▍")+styleSelectedBar.Render(plain))
 		return
@@ -94,7 +99,7 @@ func (d treeDelegate) Render(w io.Writer, m list.Model, index int, item list.Ite
 		line += " " + styleModified.Render(delta)
 	}
 
-	fmt.Fprint(w, line)
+	fmt.Fprint(w, ansi.Truncate(line, width, "…"))
 }
 
 // identity returns the string unchanged (used for plain-text prefix building).
@@ -305,7 +310,7 @@ const mouseScrollLines = 3
 
 func (m treeModel) Update(msg tea.Msg) (treeModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, m.keys.Expand):
 			return m.handleExpand()
@@ -327,14 +332,14 @@ func (m treeModel) Update(msg tea.Msg) (treeModel, tea.Cmd) {
 			return m.setFilter(filterModified)
 		}
 
-	case tea.MouseMsg:
+	case tea.MouseWheelMsg:
 		switch msg.Button {
-		case tea.MouseButtonWheelUp:
+		case tea.MouseWheelUp:
 			for i := 0; i < mouseScrollLines; i++ {
 				m.list.CursorUp()
 			}
 			return m, nil
-		case tea.MouseButtonWheelDown:
+		case tea.MouseWheelDown:
 			for i := 0; i < mouseScrollLines; i++ {
 				m.list.CursorDown()
 			}

@@ -3,12 +3,12 @@ package tui
 import (
 	"strings"
 
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/atotto/clipboard"
 	"github.com/block/drift/compare"
-	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // focusedPane tracks which pane has keyboard focus.
@@ -87,7 +87,7 @@ func New(result *compare.Result) Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	cmds := []tea.Cmd{tea.WindowSize()}
+	cmds := []tea.Cmd{tea.RequestWindowSize}
 	if m.standalone {
 		// Auto-load detail for the single root node.
 		cmds = append(cmds, func() tea.Msg {
@@ -102,11 +102,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.help.Width = msg.Width
+		m.help.SetWidth(msg.Width)
 		m.layout()
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// While search is active, route input to the search bar.
 		if m.search.Active() {
 			return m.updateSearch(msg)
@@ -136,7 +136,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd := m.search.Activate()
 			m.layout()
 			return m, cmd
-		case msg.Type == tea.KeyEscape && m.search.HasQuery():
+		case msg.Code == tea.KeyEscape && m.search.HasQuery():
 			// Clear confirmed search.
 			m.search.Deactivate()
 			m.applySearchQuery("")
@@ -144,8 +144,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-	case tea.MouseMsg:
-		if !m.standalone && msg.Button == tea.MouseButtonLeft && msg.Action == tea.MouseActionPress {
+	case tea.MouseClickMsg:
+		if !m.standalone && msg.Button == tea.MouseLeft {
 			treeWidth := int(float64(m.width) * treeSplitRatio)
 			if msg.X < treeWidth {
 				m.focus = paneTree
@@ -240,8 +240,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // updateSearch handles key messages while the search bar is active.
-func (m Model) updateSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.Type {
+func (m Model) updateSearch(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.Code {
 	case tea.KeyEscape:
 		// Cancel: clear search and restore.
 		m.search.Deactivate()
@@ -316,9 +316,9 @@ func (m *Model) loadDetailFor(node *compare.Node) tea.Cmd {
 	}
 }
 
-func (m Model) View() string {
+func (m Model) View() tea.View {
 	if m.width == 0 || m.height == 0 {
-		return ""
+		return tea.View{AltScreen: true, MouseMode: tea.MouseModeCellMotion}
 	}
 
 	header := m.renderHeader()
@@ -329,16 +329,20 @@ func (m Model) View() string {
 	chrome := lipgloss.Height(header) + 1 + lipgloss.Height(summary) + 1 + lipgloss.Height(helpView)
 	contentHeight := m.height - chrome
 	if contentHeight < 1 {
-		return header + "\n" + summary + "\n" + helpView
+		return tea.View{
+			Content:   header + "\n" + summary + "\n" + helpView,
+			AltScreen: true,
+			MouseMode: tea.MouseModeCellMotion,
+		}
 	}
 
-	innerH := contentHeight - borderHeight
 	var content string
 
 	if m.standalone {
 		// Full-width detail for standalone mode.
+		// In lipgloss v2, Width/Height include borders, so pass total dimensions.
 		detailInnerW := m.width - panePadding
-		detailStyle := styleFocusedBorder.Width(detailInnerW).Height(innerH).MaxHeight(innerH + borderHeight)
+		detailStyle := styleFocusedBorder.Width(m.width).Height(contentHeight).MaxHeight(contentHeight)
 
 		content = detailStyle.Render(m.detailPaneChrome(detailInnerW) + m.detail.View())
 	} else {
@@ -347,13 +351,14 @@ func (m Model) View() string {
 		detailWidth := m.width - treeWidth
 
 		// Tree pane with filter badge and optional search bar.
+		// In lipgloss v2, Width/Height include borders, so pass total pane dimensions.
 		treeInnerW := treeWidth - panePadding
-		treeStyle := m.paneStyle(paneTree).Width(treeInnerW).Height(innerH).MaxHeight(innerH + borderHeight)
+		treeStyle := m.paneStyle(paneTree).Width(treeWidth).Height(contentHeight).MaxHeight(contentHeight)
 		treeView := treeStyle.Render(m.treePaneChrome(treeInnerW) + m.tree.View())
 
 		// Detail pane with optional search bar.
 		detailInnerW := detailWidth - panePadding
-		detailStyle := m.paneStyle(paneDetail).Width(detailInnerW).Height(innerH).MaxHeight(innerH + borderHeight)
+		detailStyle := m.paneStyle(paneDetail).Width(detailWidth).Height(contentHeight).MaxHeight(contentHeight)
 		detailView := detailStyle.Render(m.detailPaneChrome(detailInnerW) + m.detail.View())
 
 		content = lipgloss.JoinHorizontal(lipgloss.Top, treeView, detailView)
@@ -372,7 +377,11 @@ func (m Model) View() string {
 		view = centerOverlay(m.alert.Render(), view, m.width, m.height)
 	}
 
-	return view
+	return tea.View{
+		Content:   view,
+		AltScreen: true,
+		MouseMode: tea.MouseModeCellMotion,
+	}
 }
 
 // searchActiveFor returns true if the search bar should be shown in the given pane.
@@ -471,7 +480,7 @@ func (m *Model) layout() {
 // Run starts the TUI program.
 func Run(result *compare.Result) error {
 	m := New(result)
-	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
+	p := tea.NewProgram(m)
 	_, err := p.Run()
 	return err
 }

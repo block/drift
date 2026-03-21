@@ -5,9 +5,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/sahilm/fuzzy"
 )
@@ -25,8 +25,14 @@ func newSearchModel() searchModel {
 	ti.Prompt = ""
 	ti.Placeholder = "type to search…"
 	ti.CharLimit = 256
-	ti.PlaceholderStyle = styleDim
-	ti.TextStyle = lipgloss.NewStyle().Foreground(colorFg)
+
+	styles := ti.Styles()
+	styles.Focused.Placeholder = styleDim
+	styles.Focused.Text = lipgloss.NewStyle().Foreground(colorFg)
+	styles.Blurred.Placeholder = styleDim
+	styles.Blurred.Text = lipgloss.NewStyle().Foreground(colorFg)
+	ti.SetStyles(styles)
+
 	return searchModel{input: ti}
 }
 
@@ -93,7 +99,7 @@ func (m searchModel) View(width int) string {
 	// Icon + text input fills the entire box.
 	icon := styleAccent.Render("⌕ ")
 	iconW := ansi.StringWidth(icon)
-	m.input.Width = max(innerW-iconW-1, 5)
+	m.input.SetWidth(max(innerW-iconW-1, 5))
 	input := m.input.View()
 
 	box := styleSearchBar.Width(innerW).Render(icon + input)

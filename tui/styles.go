@@ -1,12 +1,12 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss"
+import "charm.land/lipgloss/v2"
 
 // Layout constants.
 const (
 	treeSplitRatio = 0.35 // tree pane width fraction
-	panePadding    = 4    // border (2) + horizontal padding (2)
-	borderHeight   = 2    // top + bottom border
+	panePadding    = 4    // border (2) + horizontal padding (2); used to compute inner content width
+	borderHeight   = 2    // top + bottom border; used to compute inner content height
 )
 
 // Color palette - GitHub-inspired, muted and readable.

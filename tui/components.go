@@ -3,8 +3,8 @@ package tui
 import (
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/block/drift/compare"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 )
 
