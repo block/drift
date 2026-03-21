@@ -1,31 +1,21 @@
 ---
-name: 🐛 Bug Report
-about: Thank you for taking the time, please report a reproducible bug
-title: "[Bug] <Bug Title Here>"
+name: Bug Report
+about: Report a bug with drift
 labels: bug
-assignees: add codeowner's @name here 
-
+assignees: luispadron
 ---
 
-**Describe the bug**
-*A clear and concise description of what the bug is.*
+**What happened?**
 
-**To Reproduce:**
-*Steps to reproduce the behavior:*
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+**Command run:**
+```
+drift ...
+```
 
 **Expected behavior:**
-*A clear and concise description of what you expected to happen.*
 
-**Supporting Material**
-*If applicable, add screenshots, output log and/or other documentation to help explain your problem.*
-
-**Environment (please complete the following information):**
- - OS: [ex: iOS]
- - Version 
+**Environment:**
+- OS:
+- drift version (`drift --version`):
 
 **Additional context**
-Add any other context that you feel is relevant about the problem here.
