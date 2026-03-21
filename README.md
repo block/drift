@@ -1,36 +1,166 @@
-# drift README
+# drift
 
-Congrats, project leads! You got a new project to grow!
+<p align="center">
+  <img src=".github/assets/drift_logo.png" alt="Drift logo" width="700">
+</p>
 
-This stub is meant to help you form a strong community around your work. It's yours to adapt, and may 
-diverge from this initial structure. Just keep the files seeded in this repo, and the rest is yours to evolve! 
+A **fast**, **interactive** file **comparison tool**. 
 
-## Introduction
+Compare directories, archives, binaries, plists, and text files with a terminal UI or structured JSON output.
 
-Orient users to the project here. This is a good place to start with an assumption
-that the user knows very little - so start with the Big Picture and show how this
-project fits into it.
+[![asciicast](https://asciinema.org/a/858111.svg)](https://asciinema.org/a/858111)
 
-Then maybe a dive into what this project does.
+## Installation
 
-Diagrams and other visuals are helpful here. Perhaps code snippets showing usage.
+```sh
+go install github.com/block/drift/cmd/drift@latest
+```
 
-Project leads should complete, alongside this `README`:
+Or [download a pre-built binary for your platform from a release](https://github.com/block/drift/releases)
 
-* [CODEOWNERS](./CODEOWNERS) - set project lead(s)
-* [CONTRIBUTING.md](./CONTRIBUTING.md) - Fill out how to: install prereqs, build, test, run, access CI, chat, discuss, file issues
-* [Bug-report.md](.github/ISSUE_TEMPLATE/bug-report.md) - Fill out `Assignees` add codeowners @names
-* [config.yml](.github/ISSUE_TEMPLATE/config.yml) - remove "(/add your discord channel..)" and replace the url with your Discord channel if applicable
+Or build from source:
 
-The other files in this template repo may be used as-is:
+```sh
+gh repo clone block/drift
+cd drift
+go run ./cmd/drift --help
+```
 
-* [GOVERNANCE.md](./GOVERNANCE.md)
-* [LICENSE](./LICENSE)
+## Usage
 
-## Project Resources
+```sh
+# Compare two directories
+drift MyApp-v1.0 MyApp-v2.0
 
-| Resource                                   | Description                                                                    |
-| ------------------------------------------ | ------------------------------------------------------------------------------ |
-| [CODEOWNERS](./CODEOWNERS)                 | Outlines the project lead(s)                                                   |
-| [GOVERNANCE.md](./GOVERNANCE.md)           | Project governance                                                             |
-| [LICENSE](./LICENSE)                       | Apache License, Version 2.0                                                    |
+# Compare two archives (.ipa, .apk, .aar, .jar, .tar.gz, .tar.bz2)
+drift MyApp-v1.0.ipa MyApp-v2.0.ipa
+
+# Compare two binaries
+drift MyApp-v1.0/MyApp.app/MyApp MyApp-v2.0/MyApp.app/MyApp
+
+# Force a specific comparison mode
+drift -m binary MyApp-v1.0/MyApp.app/libcore.dylib MyApp-v2.0/MyApp.app/libcore.dylib
+
+# JSON output (non-interactive, for scripting)
+drift --json MyApp-v1.0 MyApp-v2.0
+```
+
+### Comparison modes
+
+drift auto-detects the comparison mode based on the inputs:
+
+| Mode | Inputs | What it shows |
+|------|--------|---------------|
+| **tree** | Directories, archives | File tree with added/removed/modified indicators, per-file diffs |
+| **binary** | Mach-O binaries | Sections, sizes, symbols, load commands. Requires `nm` and `size` |
+| **plist** | Property lists (.plist) | Structured key-value diff. Binary plists require `plutil` |
+| **text** | Everything else | Line-by-line unified diff |
+
+Use `-m <mode>` to override auto-detection.
+
+### Archives
+
+drift transparently extracts and compares the contents of:
+- `.ipa` (iOS app bundles)
+- `.apk` (Android app bundles)
+- `.aar` (Android libraries)
+- `.jar` (Java archives)
+- `.tar`, `.tar.gz` / `.tgz`, `.tar.bz2`
+
+## Interactive TUI
+
+When stdout is a terminal, drift launches an interactive Bubbletea-based TUI with a split-pane layout: file tree on the left, detail diff on the right.
+
+### Keybindings
+
+| Key | Action |
+|-----|--------|
+| `↑`/`k`, `↓`/`j` | Navigate tree |
+| `→`/`enter`/`l` | Expand node |
+| `←`/`h` | Collapse node |
+| `tab` | Switch pane focus |
+| `n`/`N` | Next/previous change |
+| `f` | Cycle filter (all → added → removed → modified) |
+| `1`-`4` | Filter: all, added, removed, modified |
+| `/` | Search (fuzzy match in tree, text search in detail) |
+| `s` | Swap A ↔ B |
+| `c` | Copy detail to clipboard |
+| `pgup`/`pgdn` | Scroll detail pane |
+| `g`/`G` | Jump to top/bottom |
+| `?` | Toggle full help |
+| `q`/`ctrl+c` | Quit |
+
+## JSON output
+
+Pass `--json` to get structured, machine-readable JSON output - ideal for CI pipelines, automation scripts, and AI-powered analysis.
+
+```sh
+drift --json MyApp-v1.0 MyApp-v2.0
+drift --json MyApp-v1.0/MyApp.app/libcore.dylib MyApp-v2.0/MyApp.app/libcore.dylib
+drift --json MyApp-v1.0.ipa MyApp-v2.0.ipa | jq '.summary'
+```
+
+### Output structure
+
+Every JSON result includes:
+
+| Field | Description |
+|-------|-------------|
+| `path_a`, `path_b` | The compared paths |
+| `mode` | Detected comparison mode (`tree`, `binary`, `plist`, `text`) |
+| `root` | The diff tree - each node has `name`, `path`, `status`, `kind`, `size_a`, `size_b`, and optional `children` |
+| `summary` | Aggregate counts: `added`, `removed`, `modified`, `unchanged`, `size_delta` |
+
+Node `status` is one of: `unchanged`, `added`, `removed`, `modified`.
+
+For single-file modes (binary, plist, text), a `detail` field is automatically included with mode-specific data:
+
+- **binary** - `symbols` (added/removed symbol names) and `sections` (segment/section size changes)
+- **plist** - `changes` with `key_path`, `status`, and before/after values
+- **text** - `hunks` with line-level diffs (`kind`: `context`, `added`, `removed`)
+
+### Examples
+
+Detect new files added between two builds:
+
+```sh
+drift --json MyApp-v1.0 MyApp-v2.0 | jq '[.root | .. | select(.status? == "added") | .path]'
+```
+
+Get the total size delta:
+
+```sh
+drift --json MyApp-v1.0 MyApp-v2.0 | jq '.summary.size_delta'
+```
+
+List changed symbols in a binary:
+
+```sh
+drift --json MyApp-v1.0/MyApp.app/libcore.dylib MyApp-v2.0/MyApp.app/libcore.dylib \
+  | jq '.detail.binary.symbols[] | select(.status == "added") | .name'
+```
+
+Feed a comparison to an LLM for analysis:
+
+```sh
+drift --json MyApp-v1.0.ipa MyApp-v2.0.ipa | llm "Summarize what changed between these two builds"
+```
+
+## Platform support
+
+drift works on **macOS**, **Linux**, and **Windows**. Core features (directory/archive comparison, text diffing) work everywhere. Some features require external tools and degrade gracefully when they are unavailable:
+
+| Tool | Used for | Availability |
+| --- | --- | --- |
+| `nm`, `size` | Mach-O binary analysis | macOS (Xcode CLI Tools), Linux (binutils) |
+| `plutil` | Binary plist conversion | macOS only (XML plists work everywhere) |
+| `xclip` or `xsel` | Clipboard | Linux only (macOS and Windows work natively) |
+
+## Roadmap
+
+- [ ] **Agent skill** - Ship a `drift` skill for to give the agent native access to structured file comparison
+- [ ] **CI action** - GitHub Action / reusable workflow for automated build-over-build comparison with summary comments on PRs
+
+## License
+
+[Apache License 2.0](LICENSE)
