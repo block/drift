@@ -22,5 +22,9 @@ archives:
 checksum:
   name_template: "checksums.txt"
 
+release:
+  extra_files:
+    - glob: .claude/skills/drift/SKILL.md
+
 changelog:
   sort: asc

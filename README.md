@@ -156,10 +156,23 @@ drift works on **macOS**, **Linux**, and **Windows**. Core features (directory/a
 | `plutil` | Binary plist conversion | macOS only (XML plists work everywhere) |
 | `xclip` or `xsel` | Clipboard | Linux only (macOS and Windows work natively) |
 
-## Roadmap
+## Agent skill
 
-- [ ] **Agent skill** - Ship a `drift` skill for to give the agent native access to structured file comparison
-- [ ] **CI action** - GitHub Action / reusable workflow for automated build-over-build comparison with summary comments on PRs
+drift ships a skill file that gives AI coding agents native access to structured file comparison via `drift --json`. The skill is included in every [GitHub release](https://github.com/block/drift/releases).
+
+Install with a single command:
+
+**Claude Code**
+
+```sh
+gh release download --repo block/drift --pattern 'SKILL.md' --dir ~/.claude/skills/drift
+```
+
+**Codex / Amp**
+
+```sh
+gh release download --repo block/drift --pattern 'SKILL.md' --dir ~/.agents/skills/drift
+```
 
 ## License
 
