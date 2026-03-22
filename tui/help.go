@@ -36,8 +36,9 @@ type keyMap struct {
 	Search key.Binding
 
 	// Contextual
-	Copy key.Binding
-	Swap key.Binding
+	Copy      key.Binding
+	Swap      key.Binding
+	ImageView key.Binding
 }
 
 func newKeyMap() keyMap {
@@ -127,12 +128,17 @@ func newKeyMap() keyMap {
 			key.WithKeys("s"),
 			key.WithHelp("s", "swap A↔B"),
 		),
+		ImageView: key.NewBinding(
+			key.WithKeys("v"),
+			key.WithHelp("v", "image view"),
+			key.WithDisabled(),
+		),
 	}
 }
 
 // ShortHelp returns the short help bindings shown by default.
 func (k keyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.Expand, k.Collapse, k.ToggleFocus, k.Filter, k.Search, k.Swap, k.Copy, k.Help, k.Quit}
+	return []key.Binding{k.Up, k.Down, k.Expand, k.Collapse, k.ToggleFocus, k.Filter, k.Search, k.Swap, k.ImageView, k.Copy, k.Help, k.Quit}
 }
 
 // FullHelp returns the full help bindings shown when toggled.
@@ -142,6 +148,6 @@ func (k keyMap) FullHelp() [][]key.Binding {
 		{k.NextChange, k.PrevChange, k.ToggleFocus},
 		{k.Filter, k.FilterAll, k.FilterAdded, k.FilterRemoved, k.FilterModified},
 		{k.PageDown, k.PageUp, k.Top, k.Bottom},
-		{k.Search, k.Swap, k.Copy, k.Help, k.Quit},
+		{k.Search, k.Swap, k.ImageView, k.Copy, k.Help, k.Quit},
 	}
 }

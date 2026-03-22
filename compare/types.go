@@ -36,10 +36,11 @@ const (
 	KindPlist
 	KindDSYM
 	KindText
-	KindData // opaque binary data (code signatures, assets, etc.)
+	KindImage // image files (png, jpg, gif, etc.)
+	KindData  // opaque binary data (code signatures, assets, etc.)
 )
 
-var fileKindNames = [...]string{"unknown", "directory", "archive", "macho", "plist", "dsym", "text", "data"}
+var fileKindNames = [...]string{"unknown", "directory", "archive", "macho", "plist", "dsym", "text", "image", "data"}
 
 func (k FileKind) String() string {
 	if int(k) < len(fileKindNames) {

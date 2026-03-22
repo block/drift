@@ -16,6 +16,7 @@ const (
 	ModeBinary Mode = "binary"
 	ModePlist  Mode = "plist"
 	ModeText   Mode = "text"
+	ModeImage  Mode = "image"
 )
 
 // Compare runs the appropriate comparison for the given paths and mode.
@@ -41,8 +42,10 @@ func Compare(pathA, pathB, mode Mode) (*Result, error) {
 		root, err = compareSingle(pathA, pathB, KindPlist)
 	case ModeText:
 		root, err = compareSingle(pathA, pathB, KindText)
+	case ModeImage:
+		root, err = compareSingle(pathA, pathB, KindImage)
 	default:
-		return nil, fmt.Errorf("unknown mode: %s (valid: tree, binary, plist, text)", mode)
+		return nil, fmt.Errorf("unknown mode: %s (valid: tree, binary, plist, text, image)", mode)
 	}
 	if err != nil {
 		return nil, err
@@ -218,6 +221,11 @@ func classifyPath(path string, isDir bool) FileKind {
 		return KindMachO
 	}
 
+	// Image files get their own kind for visual diffing.
+	if isImageExt(ext) {
+		return KindImage
+	}
+
 	// Known binary/opaque data extensions.
 	if isDataExt(ext) {
 		return KindData
@@ -236,12 +244,21 @@ func classifyPath(path string, isDir bool) FileKind {
 	return KindText
 }
 
+// isImageExt returns true for image file extensions that drift can decode and diff.
+func isImageExt(ext string) bool {
+	switch ext {
+	case ".png", ".jpg", ".jpeg", ".gif", ".tiff", ".tif", ".bmp", ".webp":
+		return true
+	}
+	return false
+}
+
 // isDataExt returns true for extensions that are known binary/opaque data.
 func isDataExt(ext string) bool {
 	switch ext {
 	case ".car", ".nib", ".storyboardc", ".mom", ".momd", ".omo",
-		".metallib", ".dat", ".db", ".sqlite", ".png", ".jpg", ".jpeg",
-		".gif", ".icns", ".tiff", ".tif", ".pdf", ".ttf", ".otf",
+		".metallib", ".dat", ".db", ".sqlite",
+		".icns", ".pdf", ".ttf", ".otf",
 		".woff", ".woff2", ".p12", ".cer", ".der", ".mobileprovision",
 		".lproj", ".sig", ".bin", ".enc", ".bom", ".pak":
 		return true
@@ -365,6 +382,9 @@ func detectMode(pathA, pathB string) (Mode, error) {
 		}
 		if extA == ".plist" && extB == ".plist" {
 			return ModePlist, nil
+		}
+		if isImageExt(extA) && isImageExt(extB) {
+			return ModeImage, nil
 		}
 		if isMachO(pathA) && isMachO(pathB) {
 			return ModeBinary, nil

@@ -6,6 +6,26 @@ import (
 	"github.com/block/drift/compare"
 )
 
+// ImageViewMode controls which image panel is displayed.
+type ImageViewMode int
+
+const (
+	ImageViewSideBySide ImageViewMode = iota
+	ImageViewBefore
+	ImageViewAfter
+	ImageViewDiff
+	imageViewModeCount // sentinel for cycling
+)
+
+var imageViewModeNames = [...]string{"Side by Side", "Before", "After", "Diff"}
+
+func (m ImageViewMode) String() string {
+	if int(m) < len(imageViewModeNames) {
+		return imageViewModeNames[m]
+	}
+	return "unknown"
+}
+
 // detailModel manages the detail pane viewport.
 type detailModel struct {
 	viewport        viewport.Model
@@ -15,6 +35,7 @@ type detailModel struct {
 	ready           bool
 	renderedContent string // original rendered content (no highlights)
 	search          string // current search query
+	imageViewMode   ImageViewMode
 }
 
 func newDetailModel(width, height int) detailModel {
@@ -47,7 +68,8 @@ func (m *detailModel) SetContent(node *compare.Node, detail *compare.DetailResul
 	m.lastDetail = detail
 	m.lastErr = nil
 	m.ready = true
-	m.renderedContent = renderDetail(node, detail, m.viewport.Width())
+	m.imageViewMode = ImageViewSideBySide // reset on new node
+	m.renderedContent = renderDetail(node, detail, m.viewport.Width(), m.viewport.Height(), m.imageViewMode)
 	m.applySearch()
 	m.viewport.GotoTop()
 }
@@ -93,6 +115,57 @@ func (m *detailModel) applySearch() {
 	} else {
 		m.viewport.SetContent(fuzzyHighlightLines(m.renderedContent, m.search))
 	}
+}
+
+// imageViewModeAvailable reports whether a view mode can be shown for a given diff.
+func imageViewModeAvailable(mode ImageViewMode, d *compare.ImageDiff) bool {
+	switch mode {
+	case ImageViewSideBySide:
+		return d.ImageA != nil && d.ImageB != nil
+	case ImageViewBefore:
+		return d.ImageA != nil
+	case ImageViewAfter:
+		return d.ImageB != nil
+	case ImageViewDiff:
+		return d.DiffMask != nil && d.PixelsChanged > 0
+	default:
+		return false
+	}
+}
+
+// CycleImageView advances to the next available image view mode and re-renders.
+// Returns true if the detail pane is showing an image (i.e., the cycle applies).
+func (m *detailModel) CycleImageView() bool {
+	if m.lastDetail == nil || m.lastDetail.Image == nil {
+		return false
+	}
+	d := m.lastDetail.Image
+
+	// Try each subsequent mode, wrapping around, until we find one that applies.
+	for range int(imageViewModeCount) {
+		m.imageViewMode = (m.imageViewMode + 1) % imageViewModeCount
+		if imageViewModeAvailable(m.imageViewMode, d) {
+			break
+		}
+	}
+
+	m.rerender()
+	return true
+}
+
+// IsImageView returns true if the detail pane is currently showing an image.
+func (m detailModel) IsImageView() bool {
+	return m.lastDetail != nil && m.lastDetail.Image != nil
+}
+
+// rerender re-renders the detail content with the current state.
+func (m *detailModel) rerender() {
+	if m.node == nil || m.lastDetail == nil {
+		return
+	}
+	m.renderedContent = renderDetail(m.node, m.lastDetail, m.viewport.Width(), m.viewport.Height(), m.imageViewMode)
+	m.applySearch()
+	m.viewport.GotoTop()
 }
 
 // Clear resets the detail pane to its empty state.

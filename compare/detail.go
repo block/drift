@@ -11,6 +11,7 @@ type DetailResult struct {
 	Plist  *PlistDiff  `json:"plist,omitempty"`
 	Binary *BinaryDiff `json:"binary,omitempty"`
 	Text   *TextDiff   `json:"text,omitempty"`
+	Image  *ImageDiff  `json:"image,omitempty"`
 	Dir    *DirSummary `json:"dir,omitempty"`
 }
 
@@ -52,6 +53,12 @@ func Detail(result *Result, node *Node) (*DetailResult, error) {
 			return nil, err
 		}
 		return &DetailResult{Kind: KindText, Text: diff}, nil
+	case KindImage:
+		diff, err := compareImage(result.PathA, result.PathB, node.Path, node.Status)
+		if err != nil {
+			return nil, err
+		}
+		return &DetailResult{Kind: KindImage, Image: diff}, nil
 	case KindData:
 		return &DetailResult{Kind: KindData}, nil
 	default:

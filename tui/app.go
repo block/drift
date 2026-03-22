@@ -130,6 +130,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.detail.HasContent() {
 				return m, copyToClipboard(m.detail.CopyableText())
 			}
+		case key.Matches(msg, m.keys.ImageView):
+			if m.detail.CycleImageView() {
+				return m, nil
+			}
 		case key.Matches(msg, m.keys.Swap):
 			return m, m.swapPaths()
 		case key.Matches(msg, m.keys.Search):
@@ -198,6 +202,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.detail.SetContent(msg.node, msg.detail)
 		}
 		m.keys.Copy.SetEnabled(true)
+		m.keys.ImageView.SetEnabled(m.detail.IsImageView())
 		return m, nil
 
 	case clipboardMsg:
@@ -209,6 +214,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case filterChangedMsg:
 		m.detail.Clear()
 		m.keys.Copy.SetEnabled(false)
+		m.keys.ImageView.SetEnabled(false)
 		// Auto-load detail for whatever node is now selected.
 		if cmd := m.autoLoadDetail(); cmd != nil {
 			return m, cmd

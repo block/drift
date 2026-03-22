@@ -16,7 +16,7 @@ var Version = "dev"
 type cmd struct {
 	PathA   string           `arg:"" help:"First path to compare."`
 	PathB   string           `arg:"" help:"Second path to compare."`
-	Mode    string           `short:"m" help:"Force comparison mode (tree, binary, plist, text)." default:""`
+	Mode    string           `short:"m" help:"Force comparison mode (tree, binary, plist, text, image)." default:""`
 	JSON    bool             `help:"Force JSON output."`
 	Version kong.VersionFlag `help:"Print version and exit."`
 }
