@@ -7,6 +7,7 @@ const (
 	treeSplitRatio = 0.35 // tree pane width fraction
 	panePadding    = 4    // border (2) + horizontal padding (2); used to compute inner content width
 	borderHeight   = 2    // top + bottom border; used to compute inner content height
+	minSplitWidth  = 80   // below this width, show one pane at a time
 )
 
 // Color palette - GitHub-inspired, muted and readable.

@@ -150,21 +150,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.MouseClickMsg:
 		if !m.standalone && msg.Button == tea.MouseLeft {
-			treeWidth := int(float64(m.width) * treeSplitRatio)
-			if msg.X < treeWidth {
-				m.focus = paneTree
-				// Map click Y to tree item row.
-				row := msg.Y - m.treeContentY()
-				if row >= 0 {
-					var cmd tea.Cmd
-					m.tree, cmd = m.tree.HandleClick(row)
-					if cmd == nil {
-						cmd = m.autoLoadDetail()
+			if m.isCompact() {
+				// In compact mode, clicks go to the currently visible pane.
+				if m.focus == paneTree {
+					if cmd, ok := m.handleTreeClick(msg.Y); ok {
+						return m, cmd
 					}
-					return m, cmd
 				}
 			} else {
-				m.focus = paneDetail
+				treeWidth := int(float64(m.width) * treeSplitRatio)
+				if msg.X < treeWidth {
+					m.focus = paneTree
+					if cmd, ok := m.handleTreeClick(msg.Y); ok {
+						return m, cmd
+					}
+				} else {
+					m.focus = paneDetail
+				}
 			}
 		}
 
@@ -350,7 +352,17 @@ func (m Model) View() tea.View {
 		detailInnerW := m.width - panePadding
 		detailStyle := styleFocusedBorder.Width(m.width).Height(contentHeight).MaxHeight(contentHeight)
 
-		content = detailStyle.Render(m.detailPaneChrome(detailInnerW) + m.detail.View())
+		content = detailStyle.Render(m.detailPaneChrome(detailInnerW) + "\n" + m.detail.View())
+	} else if m.isCompact() {
+		// Single-pane mode: show only the focused pane at full width.
+		innerW := m.width - panePadding
+		paneStyle := styleFocusedBorder.Width(m.width).Height(contentHeight).MaxHeight(contentHeight)
+
+		if m.focus == paneTree {
+			content = paneStyle.Render(m.treePaneChrome(innerW) + "\n" + m.tree.View())
+		} else {
+			content = paneStyle.Render(m.detailPaneChrome(innerW) + "\n" + m.detail.View())
+		}
 	} else {
 		// Split layout: tree | detail.
 		treeWidth := int(float64(m.width) * treeSplitRatio)
@@ -360,12 +372,12 @@ func (m Model) View() tea.View {
 		// In lipgloss v2, Width/Height include borders, so pass total pane dimensions.
 		treeInnerW := treeWidth - panePadding
 		treeStyle := m.paneStyle(paneTree).Width(treeWidth).Height(contentHeight).MaxHeight(contentHeight)
-		treeView := treeStyle.Render(m.treePaneChrome(treeInnerW) + m.tree.View())
+		treeView := treeStyle.Render(m.treePaneChrome(treeInnerW) + "\n" + m.tree.View())
 
 		// Detail pane with optional search bar.
 		detailInnerW := detailWidth - panePadding
 		detailStyle := m.paneStyle(paneDetail).Width(detailWidth).Height(contentHeight).MaxHeight(contentHeight)
-		detailView := detailStyle.Render(m.detailPaneChrome(detailInnerW) + m.detail.View())
+		detailView := detailStyle.Render(m.detailPaneChrome(detailInnerW) + "\n" + m.detail.View())
 
 		content = lipgloss.JoinHorizontal(lipgloss.Top, treeView, detailView)
 	}
@@ -418,8 +430,14 @@ func (m Model) filterBadge() string {
 // treeContentY returns the absolute Y coordinate where tree items start.
 func (m Model) treeContentY() int {
 	headerH := lipgloss.Height(m.renderHeader())
-	treeWidth := int(float64(m.width) * treeSplitRatio)
-	treeInnerW := treeWidth - panePadding
+
+	var treeInnerW int
+	if m.isCompact() {
+		treeInnerW = m.width - panePadding
+	} else {
+		treeWidth := int(float64(m.width) * treeSplitRatio)
+		treeInnerW = treeWidth - panePadding
+	}
 
 	// Build the same chrome that View() renders above the tree content.
 	chrome := m.treePaneChrome(treeInnerW)
@@ -429,23 +447,23 @@ func (m Model) treeContentY() int {
 }
 
 // treePaneChrome returns the content rendered above the tree list inside the pane
-// (pane header, filter badge, optional search bar, and trailing newline).
+// (pane header, filter badge, and optional search bar). Does not include a
+// trailing newline so that lipgloss.Height returns the actual visible line count.
 func (m Model) treePaneChrome(innerW int) string {
 	chrome := paneHeader("Files", m.focus == paneTree, innerW, m.filterBadge())
 	if m.searchActiveFor(paneTree) {
 		chrome += "\n" + m.search.View(innerW)
 	}
-	chrome += "\n" // the separator before tree.View()
 	return chrome
 }
 
 // detailPaneChrome returns the content rendered above the detail viewport inside the pane.
+// Does not include a trailing newline so that lipgloss.Height returns the actual visible line count.
 func (m Model) detailPaneChrome(innerW int) string {
 	chrome := paneHeader("Details", m.focus == paneDetail, innerW)
 	if m.searchActiveFor(paneDetail) {
 		chrome += "\n" + m.search.View(innerW)
 	}
-	chrome += "\n" // the separator before detail.View()
 	return chrome
 }
 
@@ -454,6 +472,26 @@ func (m Model) paneStyle(pane focusedPane) lipgloss.Style {
 		return styleFocusedBorder
 	}
 	return styleBlurredBorder
+}
+
+// isCompact returns true when the terminal is too narrow for side-by-side panes.
+func (m Model) isCompact() bool {
+	return !m.standalone && m.width < minSplitWidth
+}
+
+// handleTreeClick maps a click at the given Y coordinate to a tree item row.
+// Returns (cmd, true) if the click was on a valid row, (nil, false) otherwise.
+func (m *Model) handleTreeClick(y int) (tea.Cmd, bool) {
+	row := y - m.treeContentY()
+	if row < 0 {
+		return nil, false
+	}
+	var cmd tea.Cmd
+	m.tree, cmd = m.tree.HandleClick(row)
+	if cmd == nil {
+		cmd = m.autoLoadDetail()
+	}
+	return cmd, true
 }
 
 // layout recalculates component sizes after a resize or help toggle.
@@ -469,6 +507,13 @@ func (m *Model) layout() {
 		detailInnerW := m.width - panePadding
 		chromeH := lipgloss.Height(m.detailPaneChrome(detailInnerW))
 		m.detail.SetSize(detailInnerW, max(innerH-chromeH, 1))
+	} else if m.isCompact() {
+		// Single-pane mode: both components get full width.
+		innerW := m.width - panePadding
+		treeChromeH := lipgloss.Height(m.treePaneChrome(innerW))
+		detailChromeH := lipgloss.Height(m.detailPaneChrome(innerW))
+		m.tree.SetSize(innerW, max(innerH-treeChromeH, 1))
+		m.detail.SetSize(innerW, max(innerH-detailChromeH, 1))
 	} else {
 		treeWidth := int(float64(m.width) * treeSplitRatio)
 		detailWidth := m.width - treeWidth
