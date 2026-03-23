@@ -28,23 +28,30 @@ type DirSummary struct {
 // Detail computes an on-demand detail diff for a specific node.
 // It reads file content from the sources referenced in the result.
 func Detail(result *Result, node *Node) (*DetailResult, error) {
+	// Resolve source paths. For git mode, prefix with git:: so that
+	// readContent/contentHash/prepareBinaryPath dispatch correctly.
+	sourceA, sourceB := result.PathA, result.PathB
+	if result.Mode == ModeGit {
+		sourceA, sourceB = gitSourcePaths(result)
+	}
+
 	switch node.Kind {
 	case KindDirectory, KindDSYM:
 		return &DetailResult{Kind: node.Kind, Dir: summarizeDir(node)}, nil
 	case KindPlist:
-		diff, err := comparePlist(result.PathA, result.PathB, node.Path, node.Status)
+		diff, err := comparePlist(sourceA, sourceB, node.Path, node.Status)
 		if err != nil {
 			return nil, err
 		}
 		return &DetailResult{Kind: KindPlist, Plist: diff}, nil
 	case KindMachO:
-		diff, err := compareBinary(result.PathA, result.PathB, node.Path, node.Status)
+		diff, err := compareBinary(sourceA, sourceB, node.Path, node.Status)
 		if err != nil {
 			return nil, err
 		}
 		return &DetailResult{Kind: KindMachO, Binary: diff}, nil
 	case KindText:
-		diff, err := compareText(result.PathA, result.PathB, node.Path, node.Status)
+		diff, err := compareText(sourceA, sourceB, node.Path, node.Status)
 		if err != nil {
 			if errors.Is(err, ErrBinaryContent) {
 				// File was classified as text but contains binary data.
@@ -54,7 +61,7 @@ func Detail(result *Result, node *Node) (*DetailResult, error) {
 		}
 		return &DetailResult{Kind: KindText, Text: diff}, nil
 	case KindImage:
-		diff, err := compareImage(result.PathA, result.PathB, node.Path, node.Status)
+		diff, err := compareImage(sourceA, sourceB, node.Path, node.Status)
 		if err != nil {
 			return nil, err
 		}

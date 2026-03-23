@@ -11,6 +11,15 @@ import (
 
 // contentHash computes the SHA-256 of a file within a source (directory, archive, or standalone file).
 func contentHash(source, relPath string) (string, error) {
+	if isGitSource(source) {
+		data, err := readGitContent(gitRef(source), relPath)
+		if err != nil {
+			return "", err
+		}
+		h := sha256.Sum256(data)
+		return hex.EncodeToString(h[:]), nil
+	}
+
 	info, err := os.Stat(source)
 	if err != nil {
 		return "", err
@@ -53,6 +62,10 @@ func hashFileInArchive(archivePath, relPath string) (string, error) {
 
 // readContent reads the raw bytes of a file within a source (directory, archive, or standalone file).
 func readContent(source, relPath string) ([]byte, error) {
+	if isGitSource(source) {
+		return readGitContent(gitRef(source), relPath)
+	}
+
 	info, err := os.Stat(source)
 	if err != nil {
 		return nil, err

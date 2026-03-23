@@ -36,6 +36,7 @@ type detailModel struct {
 	renderedContent string // original rendered content (no highlights)
 	search          string // current search query
 	imageViewMode   ImageViewMode
+	gitMeta         *compare.GitMeta // git metadata, shown on root dir nodes
 }
 
 func newDetailModel(width, height int) detailModel {
@@ -69,7 +70,7 @@ func (m *detailModel) SetContent(node *compare.Node, detail *compare.DetailResul
 	m.lastErr = nil
 	m.ready = true
 	m.imageViewMode = ImageViewSideBySide // reset on new node
-	m.renderedContent = renderDetail(node, detail, m.viewport.Width(), m.viewport.Height(), m.imageViewMode)
+	m.renderedContent = renderDetail(node, detail, m.gitMetaForNode(node), m.viewport.Width(), m.viewport.Height(), m.imageViewMode)
 	m.applySearch()
 	m.viewport.GotoTop()
 }
@@ -163,7 +164,7 @@ func (m *detailModel) rerender() {
 	if m.node == nil || m.lastDetail == nil {
 		return
 	}
-	m.renderedContent = renderDetail(m.node, m.lastDetail, m.viewport.Width(), m.viewport.Height(), m.imageViewMode)
+	m.renderedContent = renderDetail(m.node, m.lastDetail, m.gitMetaForNode(m.node), m.viewport.Width(), m.viewport.Height(), m.imageViewMode)
 	m.applySearch()
 	m.viewport.GotoTop()
 }
@@ -176,6 +177,15 @@ func (m *detailModel) Clear() {
 	m.ready = false
 	m.renderedContent = ""
 	m.search = ""
+}
+
+// gitMetaForNode returns the git metadata only for root directory nodes,
+// so commit info is shown when selecting the root but not subdirectories.
+func (m detailModel) gitMetaForNode(node *compare.Node) *compare.GitMeta {
+	if node != nil && node.Path == "" && node.IsDir {
+		return m.gitMeta
+	}
+	return nil
 }
 
 // NodePath returns the path of the currently displayed node.
@@ -205,7 +215,7 @@ func (m detailModel) CopyableText() string {
 		return ErrorView{Node: m.node, Err: m.lastErr, Width: m.viewport.Width()}.CopyableText()
 	}
 	if m.lastDetail != nil {
-		return copyableDetail(m.node, m.lastDetail, m.viewport.Width())
+		return copyableDetail(m.node, m.lastDetail, m.gitMetaForNode(m.node), m.viewport.Width())
 	}
 	return NodeHeaderView{Node: m.node, Width: m.viewport.Width()}.CopyableText()
 }

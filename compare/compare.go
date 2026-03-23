@@ -17,6 +17,7 @@ const (
 	ModePlist  Mode = "plist"
 	ModeText   Mode = "text"
 	ModeImage  Mode = "image"
+	ModeGit    Mode = "git"
 )
 
 // Compare runs the appropriate comparison for the given paths and mode.
@@ -44,20 +45,28 @@ func Compare(pathA, pathB, mode Mode) (*Result, error) {
 		root, err = compareSingle(pathA, pathB, KindText)
 	case ModeImage:
 		root, err = compareSingle(pathA, pathB, KindImage)
+	case ModeGit:
+		root, err = compareGit(pathA, pathB)
 	default:
-		return nil, fmt.Errorf("unknown mode: %s (valid: tree, binary, plist, text, image)", mode)
+		return nil, fmt.Errorf("unknown mode: %s (valid: tree, binary, plist, text, image, git)", mode)
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	return &Result{
+	result := &Result{
 		PathA:   pathA,
 		PathB:   pathB,
 		Mode:    mode,
 		Root:    root,
 		Summary: ComputeSummary(root),
-	}, nil
+	}
+
+	if mode == ModeGit {
+		result.Git = BuildGitMeta(pathA, pathB)
+	}
+
+	return result, nil
 }
 
 // compareSingle builds a single-node tree for standalone file comparison.

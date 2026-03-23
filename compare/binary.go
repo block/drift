@@ -79,9 +79,17 @@ func extractFromBinary(source, relPath string) (map[string]bool, []sectionInfo, 
 	return syms, secs, nil
 }
 
-// prepareBinaryPath returns a filesystem path to the binary. For archives,
-// it extracts the file to a temp location and returns a cleanup function.
+// prepareBinaryPath returns a filesystem path to the binary. For archives
+// and git sources, it extracts the file to a temp location and returns a cleanup function.
 func prepareBinaryPath(source, relPath string) (string, func(), error) {
+	if isGitSource(source) {
+		data, err := readGitContent(gitRef(source), relPath)
+		if err != nil {
+			return "", nil, err
+		}
+		return writeToTempFile(data)
+	}
+
 	info, err := os.Stat(source)
 	if err != nil {
 		return "", nil, err

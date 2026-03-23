@@ -54,10 +54,11 @@ type Model struct {
 func New(result *compare.Result) Model {
 	keys := newKeyMap()
 	h := help.New()
-	tree := newTreeModel(result.Root, keys, 80, 24)
+	tree := newTreeModel(result.Root, keys, 80, 24, result.Git != nil)
 	detail := newDetailModel(40, 24)
+	detail.gitMeta = result.Git
 
-	standalone := result.Mode != "tree"
+	standalone := result.Mode != "tree" && result.Mode != "git"
 	focus := paneTree
 	if standalone {
 		focus = paneDetail
@@ -175,8 +176,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.alert.Show("Swap failed: "+msg.err.Error(), alertError)
 		}
 		m.result = msg.result
-		m.tree = newTreeModel(msg.result.Root, m.keys, m.width, m.height)
+		m.tree = newTreeModel(msg.result.Root, m.keys, m.width, m.height, msg.result.Git != nil)
 		m.detail.Clear()
+		m.detail.gitMeta = msg.result.Git
 		m.keys.Copy.SetEnabled(false)
 		m.layout()
 		if m.standalone {
@@ -188,7 +190,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case nodeSelectedMsg:
 		// Load detail if not already showing this node.
-		if msg.node.Path != m.detail.NodePath() {
+		if msg.node.Path != m.detail.NodePath() || !m.detail.HasContent() {
 			return m, m.loadDetailFor(msg.node)
 		}
 		return m, nil
@@ -291,7 +293,7 @@ func (m *Model) autoLoadDetail() tea.Cmd {
 	if node == nil {
 		return nil
 	}
-	if node.Path == m.detail.NodePath() {
+	if node.Path == m.detail.NodePath() && m.detail.HasContent() {
 		return nil
 	}
 	return m.loadDetailFor(node)
@@ -410,7 +412,35 @@ func (m Model) searchActiveFor(pane focusedPane) bool {
 func (m Model) renderHeader() string {
 	title := styleHeaderLabel.Render("drift: ") +
 		styleTitle.Render(m.result.Root.Name)
+
+	if g := m.result.Git; g != nil {
+		var parts []string
+		if c := g.CommitA; c != nil {
+			parts = append(parts, styleSubtle.Render(shortSHA(c.SHA))+" "+styleDim.Render(truncate(c.Subject, 50)))
+		}
+		if c := g.CommitB; c != nil {
+			parts = append(parts, styleSubtle.Render(shortSHA(c.SHA))+" "+styleDim.Render(truncate(c.Subject, 50)))
+		}
+		if len(parts) > 0 {
+			title += "  " + strings.Join(parts, styleDim.Render(" → "))
+		}
+	}
+
 	return styleSummaryBar.Width(m.width).Render(title)
+}
+
+func shortSHA(sha string) string {
+	if len(sha) > 8 {
+		return sha[:8]
+	}
+	return sha
+}
+
+func truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max-1] + "…"
 }
 
 func (m Model) filterBadge() string {

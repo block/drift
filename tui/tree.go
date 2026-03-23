@@ -257,6 +257,7 @@ type treeModel struct {
 	filter        statusFilter
 	search        string           // raw search query
 	searchMatches map[string][]int // path → matched char indices (nil = no search)
+	showRoot      bool             // if true, include root node as a visible tree item
 }
 
 // nodeSelectedMsg is sent when a tree node is selected for detail viewing.
@@ -264,7 +265,7 @@ type nodeSelectedMsg struct {
 	node *compare.Node
 }
 
-func newTreeModel(root *compare.Node, keys keyMap, width, height int) treeModel {
+func newTreeModel(root *compare.Node, keys keyMap, width, height int, showRoot bool) treeModel {
 	expanded := map[string]bool{"": true} // root is always expanded
 	autoExpand(root, expanded)
 
@@ -272,6 +273,7 @@ func newTreeModel(root *compare.Node, keys keyMap, width, height int) treeModel 
 		root:     root,
 		expanded: expanded,
 		keys:     keys,
+		showRoot: showRoot,
 	}
 	m.items = m.flattenTree()
 
@@ -381,6 +383,10 @@ func (m treeModel) HandleClick(visibleRow int) (treeModel, tea.Cmd) {
 	node := m.items[itemIndex].node
 
 	if node.IsDir {
+		// Root node is always expanded - don't toggle it.
+		if m.showRoot && node.Path == "" {
+			return m, nil
+		}
 		// Toggle expand/collapse.
 		if m.expanded[node.Path] {
 			delete(m.expanded, node.Path)
@@ -428,9 +434,12 @@ func (m treeModel) handleCollapse() (treeModel, tea.Cmd) {
 	node := item.node
 
 	if node.IsDir && m.expanded[node.Path] {
-		delete(m.expanded, node.Path)
-		m.rebuildItems()
-		return m, nil
+		// Root node is always expanded - don't collapse it.
+		if !(m.showRoot && node.Path == "") {
+			delete(m.expanded, node.Path)
+			m.rebuildItems()
+			return m, nil
+		}
 	}
 
 	// Move cursor to parent directory.
@@ -612,6 +621,11 @@ func (m treeModel) flattenTree() []treeItem {
 			}
 		}
 	}
-	walk(m.root, -1, nil, true)
+
+	startDepth := -1
+	if m.showRoot {
+		startDepth = 0
+	}
+	walk(m.root, startDepth, nil, true)
 	return items
 }

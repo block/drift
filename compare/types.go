@@ -70,13 +70,31 @@ func (n *Node) SizeDelta() int64 {
 	return n.SizeB - n.SizeA
 }
 
+// GitCommitInfo holds metadata for a single git commit.
+type GitCommitInfo struct {
+	SHA     string `json:"sha"`
+	Subject string `json:"subject"`
+	Body    string `json:"body,omitempty"`
+	Author  string `json:"author"`
+	Date    string `json:"date"`
+	Ref     string `json:"ref"` // original ref (branch name, tag, HEAD, etc.)
+	Remote  string `json:"remote,omitempty"`
+}
+
+// GitMeta holds git-specific metadata for the comparison.
+type GitMeta struct {
+	CommitA *GitCommitInfo `json:"commit_a,omitempty"`
+	CommitB *GitCommitInfo `json:"commit_b,omitempty"`
+}
+
 // Result is the top-level output of a comparison.
 type Result struct {
-	PathA   string  `json:"path_a"`
-	PathB   string  `json:"path_b"`
-	Mode    Mode    `json:"mode"`
-	Root    *Node   `json:"root"`
-	Summary Summary `json:"summary"`
+	PathA   string   `json:"path_a"`
+	PathB   string   `json:"path_b"`
+	Mode    Mode     `json:"mode"`
+	Root    *Node    `json:"root"`
+	Summary Summary  `json:"summary"`
+	Git     *GitMeta `json:"git,omitempty"`
 }
 
 // Summary aggregates diff statistics.
