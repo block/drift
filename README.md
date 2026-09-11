@@ -27,7 +27,7 @@ go install github.com/block/drift/cmd/drift@latest # or @vX.X.X
 Or build from source:
 
 ```sh
-gh repo clone block/drift
+git clone https://github.com/block/drift.git
 cd drift
 go run ./cmd/drift --help
 ```
